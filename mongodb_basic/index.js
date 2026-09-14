@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import "dotenv/config";
 import { MongoClient, ServerApiVersion } from "mongodb";
 const app = express();
 const port = 3000;
@@ -7,8 +8,7 @@ const port = 3000;
 app.use(express.json());
 app.use(cors());
 
-const uri =
-  "mongodb://icoxtechnologies_db_user:GE5HZr9tfA86etNx@ac-qefdqpi-shard-00-00.gycga7a.mongodb.net:27017,ac-qefdqpi-shard-00-01.gycga7a.mongodb.net:27017,ac-qefdqpi-shard-00-02.gycga7a.mongodb.net:27017/?ssl=true&replicaSet=atlas-m6qozc-shard-0&authSource=admin&appName=mongodb-basics";
+const uri = process.env.URI
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
