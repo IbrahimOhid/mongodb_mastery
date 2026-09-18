@@ -8,7 +8,7 @@ const port = 3000;
 app.use(express.json());
 app.use(cors());
 
-const uri = process.env.URI
+const uri = process.env.URI;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -28,7 +28,7 @@ app.post("/add-user", async (req, res) => {
   try {
     const newUser = req.body;
     //const result = await usersCollection.insertOne(newUser);
-    const result  = await usersCollection.insertMany(newUser)
+    const result = await usersCollection.insertMany(newUser);
     res.status(200).json({
       message: "User Created Successfully!",
       result,
@@ -36,105 +36,193 @@ app.post("/add-user", async (req, res) => {
   } catch (error) {
     res.status(400).json({
       message: "Failed to Create User",
-      error
-    })
+      error,
+    });
   }
 });
 // find all user
-app.get("/users", async (req, res)=>{
+app.get("/users", async (req, res) => {
   try {
     const users = await usersCollection.find().toArray();
     res.status(200).json({
       message: "Users Find Successfully",
-      users
-    })
+      users,
+    });
   } catch (error) {
     res.status(400).json({
       message: "User Not Found",
-      error
-    })
+      error,
+    });
   }
-})
+});
 // find single user
-app.get("/users/:id", async (req, res)=>{
+app.get("/users/:id", async (req, res) => {
   const { id } = req.params;
   try {
-      const singleUser = await usersCollection.findOne({_id: new ObjectId({id})});
-      res.status(200).json({
-        message: "User Find Successfully",
-        singleUser
-      })
+    const singleUser = await usersCollection.findOne({
+      _id: new ObjectId({ id }),
+    });
+    res.status(200).json({
+      message: "User Find Successfully",
+      singleUser,
+    });
   } catch (error) {
     res.status(400).json({
       message: "User Not Found",
-      error
-    })
+      error,
+    });
   }
-})
+});
 // find email
-app.get("/users/user/:email", async (req, res)=>{
-  const {email} = req.params;
+app.get("/users/user/:email", async (req, res) => {
+  const { email } = req.params;
   try {
-    const finalUser = await usersCollection.find({email, age: {$gt: 2}}, {projection: {name: 1}}).toArray()
-    res.status(200).json(finalUser)
+    const finalUser = await usersCollection
+      .find({ email, age: { $gt: 2 } }, { projection: { name: 1 } })
+      .toArray();
+    res.status(200).json(finalUser);
   } catch (error) {
     res.status(404).json({
+      message: "Data Not Found",
+      error,
+    });
+  }
+});
+// update user data
+app.patch("/update-user/:id", async (req, res) => {
+  const { id } = req.params;
+  const userData = req.body;
+  try {
+    const filter = { _id: new ObjectId({ id }) };
+    const userInfo = {
+      $set: {
+        ...userData,
+      },
+    };
+
+    const options = { upsert: true };
+
+    const updateUser = await usersCollection.updateOne(
+      filter,
+      userInfo,
+      options,
+    );
+    res.json(updateUser);
+  } catch (error) {
+    res.status(400).json({
+      message: "User Not Found",
+      error,
+    });
+  }
+});
+// update all data
+app.patch("/users/increase-age", async (req, res) => {
+  const userAgeIncrease = await usersCollection.updateMany(
+    {},
+    { $set: { status: "Pending" } },
+  );
+  res.json(userAgeIncrease);
+});
+// delete user
+app.delete("/users/delete-user/:id", async (req, res) => {
+  const { id } = req.params;
+  const filter = { _id: new ObjectId({ id }) };
+  try {
+    const deleteUser = await usersCollection.deleteOne(filter);
+    res.json(deleteUser);
+  } catch (error) {
+    res.status(400).json({
+      message: "User Not Found",
+      error,
+    });
+  }
+});
+// delete all
+app.delete("/users/status", async (req, res) => {
+  const { status } = req.body;
+  try {
+    const deleteStatusData = await usersCollection.deleteMany({ status });
+    res.json(deleteStatusData);
+  } catch (error) {
+    res.json(400).json({
+      message: "Data Not Found",
+      error,
+    });
+  }
+});
+// Search by Greater Than Age
+app.get("/users/grater-age/:age", async (req, res) => {
+  const { age } = req.params;
+  try {
+    // const graterThanAge = await usersCollection
+    //   .find({ age: { $gt: parseInt(age) } })
+    //   .toArray();
+    const lessThanAge = await usersCollection
+      .find({ age: { $lt: parseInt(age) } })
+      .toArray();
+
+    res.status(200).json({
+      message: "Users Found Successfully",
+      //graterThanAge, 
+      lessThanAge
+    });
+  } catch (error) {
+    res.status(400).json({ message: "User Not Found", error: error.message });
+  }
+});
+// logical operators
+// and operator
+app.get("/user/logical-operator/and", async(req, res)=>{
+  try {
+    const user = await usersCollection.find({
+      $and: [
+        {age: {$gte : 20}},
+        {age: {$lte: 30}}
+      ]
+    }).toArray()
+    res.status(200).json({
+      message: "Sort Successfully",
+      user
+    })
+  } catch (error) {
+    res.status(200).json({
       message: "Data Not Found",
       error
     })
   }
 })
-// update user data
-app.patch("/update-user/:id", async (req, res)=>{
-  const {id} = req.params;
-  const userData = req.body
+// or operator
+app.get("/user/logical-operator/or", async(req, res)=>{
   try {
-    const filter = {_id: new ObjectId({id})}
-    const userInfo = {
-      $set: {
-        ...userData
-      }
-    }
-
-    const options=  {upsert: true}
-
-    const updateUser = await usersCollection.updateOne(filter, userInfo, options);
-    res.json(updateUser)
-
+    const user = await usersCollection.find({
+      $or: [
+        {age: {$gte : 20}},
+        {age: {$lte: 30}}
+      ]
+    }).toArray()
+    res.status(200).json({
+      message: "Sort Successfully",
+      user
+    })
   } catch (error) {
-    res.status(400).json({
-      message: "User Not Found",
+    res.status(200).json({
+      message: "Data Not Found",
       error
     })
   }
 })
-// update all data
-app.patch("/users/increase-age", async (req, res)=>{
-  const userAgeIncrease = await usersCollection.updateMany({}, {$set: {status: "Pending"}})
-  res.json(userAgeIncrease)
-})
-// delete user
-app.delete("/users/delete-user/:id", async (req, res)=>{
-  const {id} = req.params;
-  const filter = {_id: new ObjectId({id})}
+// not operator
+app.get("/user/logical-operator/not", async(req, res)=>{
   try {
-    const deleteUser = await usersCollection.deleteOne(filter)
-    res.json(deleteUser)
-  } catch (error) {
-    res.status(400).json({
-      message: "User Not Found",
-      error
+    const user = await usersCollection.find({
+      age:{$not: {$gt: 20}}
+    }).toArray()
+    res.status(200).json({
+      message: "Sort Successfully",
+      user
     })
-  }
-})
-
-app.delete("/users/status", async (req, res)=>{
-  const {status} = req.body;
-  try {
-    const deleteStatusData = await usersCollection.deleteMany({status});
-    res.json(deleteStatusData)
   } catch (error) {
-    res.json(400).json({
+    res.status(200).json({
       message: "Data Not Found",
       error
     })
