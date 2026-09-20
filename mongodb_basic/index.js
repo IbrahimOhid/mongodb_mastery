@@ -228,6 +228,31 @@ app.get("/user/logical-operator/not", async(req, res)=>{
     })
   }
 })
+// exists
+app.get("/user/data-type/exists", async (req, res)=>{
+  const existData = await usersCollection.find({status: {$exists: false}}).toArray();
+  res.json(existData)
+})
+app.get("/user/data-type/exists", async (req, res)=>{
+  const existData = await usersCollection.find({status: {$exists: true}}).toArray();
+  res.json(existData)
+})
+// type
+app.get("/user/data-type/type", async (req, res)=>{
+  const typeData = await usersCollection.find({age: {$type: "string"}}).toArray();
+  res.json(typeData)
+})
+app.get("/user/data-type/type", async (req, res)=>{
+  const typeData = await usersCollection.find({age: {$type: "int"}}).toArray();
+  res.json(typeData)
+})
+// regex
+app.get("/user/query-predicate-operator/regex", async (req, res)=>{
+  const predicateData = await usersCollection.find({
+    name: {$regex: "^M", $options: "i"}
+  }).toArray()
+  res.json(predicateData)
+});
 
 async function run() {
   try {
