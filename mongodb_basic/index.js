@@ -253,6 +253,33 @@ app.get("/user/query-predicate-operator/regex", async (req, res)=>{
   }).toArray()
   res.json(predicateData)
 });
+//array-operator- all
+app.get("/user/array-operator/skills", async (req, res)=>{
+  const user = await usersCollection
+    .find({
+      skills: { $all: ["Js"] },
+    })
+    .toArray();
+  res.json(user)
+})
+// size
+app.get("/user/array-operator/skills", async (req, res)=>{
+  const user = await usersCollection
+    .find({
+      skills: { $size: 1 },
+    })
+    .toArray();
+  res.json(user)
+})
+// sorting data
+app.get("/user/sort-data/sort", async (req, res)=>{
+  const user = await usersCollection.find().sort({age: -1}).toArray()
+  res.json(user)
+})
+app.get("/user/sort-data/sort-name", async (req, res)=>{
+  const user = await usersCollection.find().sort({name: 1}).toArray()
+  res.json(user)
+})
 
 async function run() {
   try {
