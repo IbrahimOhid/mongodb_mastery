@@ -280,6 +280,19 @@ app.get("/user/sort-data/sort-name", async (req, res)=>{
   const user = await usersCollection.find().sort({name: 1}).toArray()
   res.json(user)
 })
+// pagination (5 user data)
+app.get("/pagination", async(req, res)=>{
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 5;
+    const skip = (page - 1) * limit;
+    const paginationPage = await usersCollection.find().skip(skip).limit(limit).toArray();
+    const totalUser = await usersCollection.countDocuments();
+    res.json(paginationPage, totalUser)
+  } catch (error) {
+    res.status(404).json(error)
+  }
+})
 
 async function run() {
   try {
