@@ -39,47 +39,50 @@ export async function connectToMongoDB() {
       const {
         page,
         limit,
-        genre,
+        author,
         minYear,
         maxYear,
-        author,
+        genre,
         minPrice,
         maxPrice,
-        sortBy,
         order,
+        sortBy,
         search,
       } = req.query;
       try {
         const currentPage = Math.max(1, parseInt(page) || 1);
-        const perPage = parseInt(limit) || 10;
-        const skip = (currentPage - 1) * perPage;
+        const perPage = parseInt(limit) || 5;
+        const sort = (currentPage - 1) * perPage;
+
+        // filter
         const filter = {};
-        // search filter
+        // search
         if (search) {
           filter.$or = [
             { title: { $regex: search, $options: "i" } },
             { description: { $regex: search, $options: "i" } },
+            { author: { $regex: search, $options: "i" } },
           ];
         }
-        // genre filter
+        // genre filtering
         if (genre) filter.genre = genre;
-        // published year filter
+        // author filtering
+        if (author) filter.author = author;
+        // publishedYear filtering
         if (minYear || maxYear) {
           filter.publishedYear = {
             ...(minYear && { $gte: parseInt(minYear) }),
             ...(maxYear && { $lte: parseInt(maxYear) }),
           };
         }
-        // author filter
-        if (author) filter.author = author;
-        // price filter
+        // price filtering
         if (minPrice || maxPrice) {
           filter.price = {
             ...(minPrice && { $gte: parseFloat(minPrice) }),
             ...(maxPrice && { $lte: parseFloat(maxPrice) }),
           };
         }
-        // sortby filter
+        // sorting
         const sortOptions = { [sortBy || "title"]: order === "desc" ? -1 : 1 };
 
         const allBooks = await booksCollection.find(filter).toArray();
