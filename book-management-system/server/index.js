@@ -1,6 +1,6 @@
 import express from "express";
 import "dotenv/config";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import cors from "cors";
 
 const app = express();
@@ -25,7 +25,7 @@ export async function connectToMongoDB() {
     app.post("/books", async (req, res) => {
       const bookData = req.body;
       try {
-        const newBook = await booksCollection.insertMany(bookData);
+        const newBook = await booksCollection.insertOne(bookData);
         res.status(200).json({
           message: "New Book Added Successfully",
           newBook,
@@ -52,7 +52,7 @@ export async function connectToMongoDB() {
       try {
         const currentPage = Math.max(1, parseInt(page) || 1);
         const perPage = parseInt(limit) || 5;
-        const sort = (currentPage - 1) * perPage;
+        const skip = (currentPage - 1) * perPage;
 
         // filter
         const filter = {};
@@ -85,13 +85,80 @@ export async function connectToMongoDB() {
         // sorting
         const sortOptions = { [sortBy || "title"]: order === "desc" ? -1 : 1 };
 
-        const allBooks = await booksCollection.find(filter).toArray();
+        const [books, totalBooks] = await Promise.all([
+          booksCollection
+            .find(filter)
+            .sort(sortOptions)
+            .skip(skip)
+            .limit(perPage)
+            .toArray(),
+          booksCollection.countDocuments(filter),
+        ]);
         res.status(200).json({
           message: "All Book Find Successfully",
-          allBooks,
+          books,
+          totalBooks,
+          currentPage,
+          totalPages: Math.ceil(totalBooks / perPage),
         });
       } catch (error) {
         res.status(404).json({ error: error.message });
+      }
+    }); 
+    // get book ID
+    app.get("/books/:id", async (req, res) => {
+      const { id } = req.params;
+      try {
+        const singleBook = await booksCollection.findOne({
+          _id: new ObjectId(id),
+        });
+        res.status(200).json({
+          message: "Book Find Successfully",
+          singleBook,
+        });
+      } catch (error) {
+        res.status(404).json({
+          message: "Book Not Found",
+          error,
+        });
+      }
+    });
+    // update Books = PUT
+    app.put("/books/:id", async (req, res) => {
+      const { id } = req.params;
+      const booksData = req.body;
+      try {
+        const updatedBook = await booksCollection.updateOne(
+          { _id: new ObjectId({ id }) },
+          { $set: booksData },
+        );
+        res.status(200).json({
+          message: "Updated Book Successfully",
+          updatedBook,
+        });
+      } catch (error) {
+        res.status(404).json({
+          message: "Book Not Found",
+          error,
+        });
+      }
+    });
+    // delete books
+    app.delete("/books/:id", async (req, res) => {
+      const { id } = req.params;
+      try {
+        const deleteBook = await booksCollection.deleteOne({
+          _id: new ObjectId({ id }),
+        });
+        res.status(200).json({
+          message: "Delete Book Successfully",
+          deleteBook,
+        });
+      } catch (error) {
+        res.status(404).json({
+          message: "Book Not Found",
+          error,
+        });
       }
     });
 
