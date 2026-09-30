@@ -76,7 +76,7 @@ export async function connectToMongoDB() {
           };
         }
         // price filtering
-        if (minPrice || maxPrice) {
+        if (minPrice || maxPrice) { 
           filter.price = {
             ...(minPrice && { $gte: parseFloat(minPrice) }),
             ...(maxPrice && { $lte: parseFloat(maxPrice) }),
