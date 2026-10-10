@@ -1,7 +1,7 @@
 import "dotenv/config";
 import cors from "cors";
 import express from "express";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 
 const app = express();
 const port = 3000;
@@ -74,37 +74,44 @@ export async function connectToMongoDB() {
             },
             items: {
               bsonType: "array",
-              required: ["product", "price"],
-              properties: {
-                product: {
-                  bsonType: "string",
-                },
-                price: {
-                  bsonType: "double",
+              items: {
+                bsonType: "object",
+                required: ["product", "price"],
+                properties: {
+                  product: {
+                    bsonType: "string",
+                  },
+                  price: {
+                    bsonType: ["double", "int", "decimal"],
+                  },
                 },
               },
             },
             totalAmount: {
-              bsonType: "double",
-              description:"Total Order Price"
+              bsonType: ["double", "int", "decimal"],
+              description: "Total Order Price",
             },
             status: {
-              enm: ["Pending", "Shipped", "Delivered"]
+              bsonType: "string",
             },
-            orderData:{
-              bsonType: "date"
-            }
+            orderData: {
+              bsonType: "date",
+            },
           },
         },
       },
     };
     // create db collection
     await db.createCollection("users", userSchema);
+    await db.createCollection("orders", orderSchema)
     const userCollection = db.collection("users");
+    const orderCollection = db.collection("orders")
 
     // indexing
     userCollection.createIndex({ email: 1 }, { unique: true });
+ orderCollection.createIndex({user_id: 1})
 
+    // user request
     // post request
     app.post("/users", async (req, res) => {
       try {
@@ -140,6 +147,26 @@ export async function connectToMongoDB() {
         });
       }
     });
+    // order request
+    app.post("/orders", async (req, res)=>{
+      const {user_id, items} = req.body;
+      const user = await userCollection.findOne({_id: new ObjectId(user_id)});
+      if(!user){
+       return res.status(404).json({message: "User Not Found"})
+      };
+      const totalAmount = items.reduce((sum, item)=> sum + item.price , 0)
+      const result = await orderCollection.insertOne({
+        user_id:  new ObjectId(user_id), 
+        items,
+        totalAmount,
+        status: "Pending",
+        orderData: new Date()
+      })
+      res.status(200).json({
+        message: "Order Created Successfully",
+        result
+      })
+    })
 
     console.log("You successfully connected to MongoDB!");
     return client;
