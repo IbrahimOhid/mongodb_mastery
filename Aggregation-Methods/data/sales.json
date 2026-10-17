@@ -1,0 +1,106 @@
+[
+  {
+    "year": 2023,
+    "region": "North",
+    "amount": 1600,
+    "customer": "Alice",
+    "transactions": [
+      { "item": "Laptop", "amount": 1550 },
+      { "item": "Mouse", "amount": 50 }
+    ]
+  },
+  {
+    "year": 2023,
+    "region": "South",
+    "amount": 850,
+    "customer": "Bob",
+    "transactions": [
+      { "item": "Keyboard", "amount": 300 },
+      { "item": "Monitor", "amount": 550 }
+    ]
+  },
+  {
+    "year": 2024,
+    "region": "East",
+    "amount": 2200,
+    "customer": "Charlie",
+    "transactions": [
+      { "item": "Laptop", "amount": 1800 },
+      { "item": "Headphones", "amount": 250 },
+      { "item": "Mouse", "amount": 150 }
+    ]
+  },
+  {
+    "year": 2024,
+    "region": "West",
+    "amount": 1250,
+    "customer": "Diana",
+    "transactions": [
+      { "item": "Tablet", "amount": 1000 },
+      { "item": "Stylus", "amount": 250 }
+    ]
+  },
+  {
+    "year": 2023,
+    "region": "East",
+    "amount": 950,
+    "customer": "Ethan",
+    "transactions": [
+      { "item": "Printer", "amount": 700 },
+      { "item": "Ink Cartridge", "amount": 250 }
+    ]
+  },
+  {
+    "year": 2025,
+    "region": "North",
+    "amount": 3100,
+    "customer": "Fiona",
+    "transactions": [
+      { "item": "Desktop PC", "amount": 2400 },
+      { "item": "Monitor", "amount": 500 },
+      { "item": "Keyboard", "amount": 200 }
+    ]
+  },
+  {
+    "year": 2025,
+    "region": "South",
+    "amount": 1750,
+    "customer": "George",
+    "transactions": [
+      { "item": "Smartphone", "amount": 1500 },
+      { "item": "Phone Case", "amount": 150 },
+      { "item": "Charger", "amount": 100 }
+    ]
+  },
+  {
+    "year": 2024,
+    "region": "West",
+    "amount": 1400,
+    "customer": "Hannah",
+    "transactions": [
+      { "item": "Camera", "amount": 1100 },
+      { "item": "Memory Card", "amount": 300 }
+    ]
+  },
+  {
+    "year": 2025,
+    "region": "East",
+    "amount": 2600,
+    "customer": "Isaac",
+    "transactions": [
+      { "item": "Laptop", "amount": 2000 },
+      { "item": "External SSD", "amount": 450 },
+      { "item": "USB Hub", "amount": 150 }
+    ]
+  },
+  {
+    "year": 2023,
+    "region": "North",
+    "amount": 700,
+    "customer": "Julia",
+    "transactions": [
+      { "item": "Webcam", "amount": 450 },
+      { "item": "Microphone", "amount": 250 }
+    ]
+  }
+]
