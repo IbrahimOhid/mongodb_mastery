@@ -26,12 +26,115 @@ export async function connectToMongoDB() {
     console.log(totalSalesDocuments);
 
     // aggregation - match
-    const result = await salesCollection
-      .aggregate([{ $match: { region: "North" } }])
+    const match = await salesCollection
+      .aggregate([
+        {
+          $match: {
+            year: 2023,
+          },
+        },
+        {
+          $group: {
+            _id: "$region",
+            totalSales: {
+              $sum: "$amount",
+            },
+          },
+        },
+        {
+          $sort: {
+            totalSales: -1,
+          },
+        },
+        {
+          $limit: 2,
+        },
+      ])
       .toArray();
-      console.log(result)
+    console.log(match);
 
+    // aggregation - project
+    const project = await salesCollection
+      .aggregate([
+        {
+          $match: {
+            year: 2023,
+          },
+        },
+        {
+          $project: {
+            customer: 1,
+            amount: 1,
+            transactions: 1,
+          },
+        },
+      ])
+      .toArray();
+    console.log(project);
 
+    // aggregation - lookup
+    const lookup = await salesCollection
+      .aggregate([
+        {
+          $match: {
+            year: 2023,
+          },
+        },
+        {
+          $group: {
+            _id: "$region",
+            totalSales: {
+              $sum: "$amount",
+            },
+          },
+        },
+        {
+          $lookup: {
+            from: "regions",
+            localField: "_id",
+            foreignField: "regionId",
+            as: "regionInfo",
+          },
+        },
+      ])
+      .toArray();
+    console.log(lookup);
+
+    // aggregation - unwind
+    const unwind = await salesCollection
+      .aggregate([
+        {
+          $match: {
+            year: 2023,
+          },
+        },
+        {
+          $project: {
+            customer: 1,
+            transactions: 1,
+          },
+        },
+        {
+          $unwind: {
+            path: "$transactions",
+          },
+        },
+        {
+          $group: {
+            _id: "$transactions.item",
+            TotalAmount: {
+              $sum: "$transactions.amount",
+            },
+          },
+        },
+        {
+          $sort: {
+            TotalAmount: 1,
+          },
+        },
+      ])
+      .toArray();
+    console.log(unwind);
 
     console.log("You successfully connected to MongoDB!");
     return client;
