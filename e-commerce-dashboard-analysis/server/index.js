@@ -9,17 +9,17 @@ const app = express();
 const port = 3000;
 const uri = process.env.URI;
 
-const cache = new NodeCache({ stdTTL: 100 });
+const cache = new NodeCache({ stdTTL: 600 });
 // middleware
 app.use(express.json());
 app.use(compression());
-app.use(express.urlencoded({extended: true}))
+app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
     origin: process.env.FRONTEND_URL,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"]
+    allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
 
@@ -30,25 +30,101 @@ export async function connectToMongoDB() {
     await client.connect();
 
     // create db and collections
-    const db =  client.db("e-commerce-dashboard");
+    const db = client.db("e-commerce-dashboard");
     // create indexing
-    await db.collection("users").createIndex({ email: 1}, {unique: true});
-    await db.collection("users").createIndex({ lastLogin: -1});
-    await db.collection("products").createIndex({ category : 1});
+    await db.collection("users").createIndex({ email: 1 }, { unique: true });
+    await db.collection("users").createIndex({ lastLogin: -1 });
+    await db.collection("products").createIndex({ category: 1 });
     await db.collection("products").createIndex({ stock: 1 });
-    await db.collection("orders").createIndex({ userId : 1});
+    await db.collection("orders").createIndex({ userId: 1 });
     await db.collection("orders").createIndex({ orderDate: -1 });
 
-    
+    // dashboard endpoint
+    app.get("/api/dashboard/analytics", async (req, res) => {
+      try {
+        const cacheAnalytics = cache.get("dashboardAnalytics")
+        if(cacheAnalytics){
+          return res.json(cacheAnalytics)
+        }
 
+        const [activeUsers, totalProducts, totalRevenueData, monthlySalesData] =
+          await Promise.all([
+            // total User
+            db.collection("users").countDocuments(),
+            // total Product
+            db.collection("products").countDocuments(),
+            // total Revenue
+            db
+              .collection("orders")
+              .aggregate([
+                {
+                  $group: {
+                    _id: null,
+                    totalRevenue: {
+                      $sum: "$totalAmount",
+                    },
+                    totalOrders: {
+                      $sum: 1,
+                    },
+                  },
+                },
+              ])
+              .toArray(),
+            // monthly sales
+            db.collection("orders").aggregate([
+              {
+                $group: {
+                  _id: {
+                    year: {
+                      $year: "$orderDate",
+                    },
+                    month: {
+                      $month: "$orderDate",
+                    },
+                  },
+                  monthlyRevenue: {
+                    $sum: "$totalAmount",
+                  },
+                  orders: {
+                    $sum: 1,
+                  },
+                },
+              },
+              {
+                $project: {
+                  _id: 0,
+                  year: "$_id.year",
+                  month: "$_id.month",
+                  monthlyRevenue: 1,
+                  orders: 1,
+                },
+              },
+              {
+                $sort: {
+                  year: 1,
+                  month: 1,
+                },
+              },
+            ]).toArray(),
+          ]);
 
+        const analytics = {
+          activeUsers,
+          totalProducts,
+          totalRevenueData,
+          monthlySalesData,
+        };
 
+        cache.set("dashboardAnalytics", analytics, 600);
+        res.json(analytics)
 
-
-
-
-
-
+      } catch (error) {
+        res.send(505).json({
+          message: "Internal Server Error",
+          error: message.error,
+        });
+      }
+    });
 
     console.log("You successfully connected to MongoDB!");
     return client;
