@@ -42,12 +42,12 @@ export async function connectToMongoDB() {
     // dashboard endpoint
     app.get("/api/dashboard/analytics", async (req, res) => {
       try {
-        const cacheAnalytics = cache.get("dashboardAnalytics")
-        if(cacheAnalytics){
-          return res.json(cacheAnalytics)
+        const cacheAnalytics = cache.get("dashboardAnalytics");
+        if (cacheAnalytics) {
+          return res.json(cacheAnalytics);
         }
 
-        const [activeUsers, totalProducts, totalRevenueData, monthlySalesData] =
+        const [activeUsers, totalProducts, totalRevenueData, monthlySalesData, inventoryMetrics] =
           await Promise.all([
             // total User
             db.collection("users").countDocuments(),
@@ -71,41 +71,87 @@ export async function connectToMongoDB() {
               ])
               .toArray(),
             // monthly sales
-            db.collection("orders").aggregate([
-              {
-                $group: {
-                  _id: {
-                    year: {
-                      $year: "$orderDate",
+            db
+              .collection("orders")
+              .aggregate([
+                {
+                  $group: {
+                    _id: {
+                      year: {
+                        $year: "$orderDate",
+                      },
+                      month: {
+                        $month: "$orderDate",
+                      },
                     },
-                    month: {
-                      $month: "$orderDate",
+                    monthlyRevenue: {
+                      $sum: "$totalAmount",
+                    },
+                    orders: {
+                      $sum: 1,
                     },
                   },
-                  monthlyRevenue: {
-                    $sum: "$totalAmount",
+                },
+                {
+                  $project: {
+                    _id: 0,
+                    year: "$_id.year",
+                    month: "$_id.month",
+                    monthlyRevenue: 1,
+                    orders: 1,
                   },
-                  orders: {
-                    $sum: 1,
+                },
+                {
+                  $sort: {
+                    year: 1,
+                    month: 1,
                   },
                 },
-              },
-              {
-                $project: {
-                  _id: 0,
-                  year: "$_id.year",
-                  month: "$_id.month",
-                  monthlyRevenue: 1,
-                  orders: 1,
+              ])
+              .toArray(),
+            // inventory Metrics
+            db
+              .collection("products")
+              .aggregate([
+                {
+                  $group: {
+                    _id: null,
+                    totalStock: {
+                      $sum: "$stock",
+                    },
+                    averageStock: {
+                      $avg: "$stock",
+                    },
+                    lowStock: {
+                      $sum: {
+                        $cond: [
+                          {
+                            $lt: ["$stock", 10],
+                          },
+                          1,
+                          0,
+                        ],
+                      },
+                    },
+                    lowOfStock: {
+                      $sum: {
+                        $cond: [
+                          {
+                            $eq: ["$stock", 0],
+                          },
+                          1,
+                          0,
+                        ],
+                      },
+                    },
+                  },
                 },
-              },
-              {
-                $sort: {
-                  year: 1,
-                  month: 1,
-                },
-              },
-            ]).toArray(),
+              ])
+              .toArray(),
+              // customer Analytics
+              db.collection("customers").aggregate(
+                
+              ).toArray()
           ]);
 
         const analytics = {
@@ -113,11 +159,11 @@ export async function connectToMongoDB() {
           totalProducts,
           totalRevenueData,
           monthlySalesData,
+          inventoryMetrics,
         };
 
         cache.set("dashboardAnalytics", analytics, 600);
-        res.json(analytics)
-
+        res.json(analytics);
       } catch (error) {
         res.send(505).json({
           message: "Internal Server Error",
