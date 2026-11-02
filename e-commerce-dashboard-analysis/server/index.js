@@ -47,119 +47,177 @@ export async function connectToMongoDB() {
           return res.json(cacheAnalytics);
         }
 
-        const [activeUsers, totalProducts, totalRevenueData, monthlySalesData, inventoryMetrics] =
-          await Promise.all([
-            // total User
-            db.collection("users").countDocuments(),
-            // total Product
-            db.collection("products").countDocuments(),
-            // total Revenue
-            db
-              .collection("orders")
-              .aggregate([
-                {
-                  $group: {
-                    _id: null,
-                    totalRevenue: {
-                      $sum: "$totalAmount",
-                    },
-                    totalOrders: {
-                      $sum: 1,
-                    },
-                  },
-                },
-              ])
-              .toArray(),
-            // monthly sales
-            db
-              .collection("orders")
-              .aggregate([
-                {
-                  $group: {
-                    _id: {
-                      year: {
-                        $year: "$orderDate",
-                      },
-                      month: {
-                        $month: "$orderDate",
-                      },
-                    },
-                    monthlyRevenue: {
-                      $sum: "$totalAmount",
-                    },
-                    orders: {
-                      $sum: 1,
-                    },
-                  },
-                },
-                {
-                  $project: {
-                    _id: 0,
-                    year: "$_id.year",
-                    month: "$_id.month",
-                    monthlyRevenue: 1,
-                    orders: 1,
-                  },
-                },
-                {
-                  $sort: {
-                    year: 1,
-                    month: 1,
-                  },
-                },
-              ])
-              .toArray(),
-            // inventory Metrics
-            db
-              .collection("products")
-              .aggregate([
-                {
-                  $group: {
-                    _id: null,
-                    totalStock: {
-                      $sum: "$stock",
-                    },
-                    averageStock: {
-                      $avg: "$stock",
-                    },
-                    lowStock: {
-                      $sum: {
-                        $cond: [
-                          {
-                            $lt: ["$stock", 10],
-                          },
-                          1,
-                          0,
-                        ],
-                      },
-                    },
-                    lowOfStock: {
-                      $sum: {
-                        $cond: [
-                          {
-                            $eq: ["$stock", 0],
-                          },
-                          1,
-                          0,
-                        ],
-                      },
-                    },
-                  },
-                },
-              ])
-              .toArray(),
-              // customer Analytics
-              db.collection("customers").aggregate(
-                
-              ).toArray()
-          ]);
-
-        const analytics = {
+        const [
           activeUsers,
           totalProducts,
           totalRevenueData,
           monthlySalesData,
           inventoryMetrics,
+          customerAnalytics,
+        ] = await Promise.all([
+          // total User
+          db.collection("users").countDocuments(),
+          // total Product
+          db.collection("products").countDocuments(),
+          // total Revenue
+          db
+            .collection("orders")
+            .aggregate([
+              {
+                $group: {
+                  _id: null,
+                  totalRevenue: {
+                    $sum: "$totalAmount",
+                  },
+                  totalOrders: {
+                    $sum: 1,
+                  },
+                },
+              },
+            ])
+            .toArray(),
+          // monthly sales
+          db
+            .collection("orders")
+            .aggregate([
+              {
+                $group: {
+                  _id: {
+                    year: {
+                      $year: "$orderDate",
+                    },
+                    month: {
+                      $month: "$orderDate",
+                    },
+                  },
+                  monthlyRevenue: {
+                    $sum: "$totalAmount",
+                  },
+                  orders: {
+                    $sum: 1,
+                  },
+                },
+              },
+              {
+                $project: {
+                  _id: 0,
+                  year: "$_id.year",
+                  month: "$_id.month",
+                  monthlyRevenue: 1,
+                  orders: 1,
+                },
+              },
+              {
+                $sort: {
+                  year: 1,
+                  month: 1,
+                },
+              },
+            ])
+            .toArray(),
+          // inventory Metrics
+          db
+            .collection("products")
+            .aggregate([
+              {
+                $group: {
+                  _id: null,
+                  totalStock: {
+                    $sum: "$stock",
+                  },
+                  averageStock: {
+                    $avg: "$stock",
+                  },
+                  lowStock: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $lt: ["$stock", 10],
+                        },
+                        1,
+                        0,
+                      ],
+                    },
+                  },
+                  lowOfStock: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $eq: ["$stock", 0],
+                        },
+                        1,
+                        0,
+                      ],
+                    },
+                  },
+                },
+              },
+            ])
+            .toArray(),
+          // customer Analytics
+          db
+            .collection("orders")
+            .aggregate([
+              {
+                $group: {
+                  _id: "$userId",
+                  totalSpend: {
+                    $sum: "$totalAmount",
+                  },
+                  orderCount: {
+                    $sum: 1,
+                  },
+                  totalOrderValue: {
+                    $avg: "$totalAmount",
+                  },
+                  lastPurchaseDate: {
+                    $max: "$orderDate",
+                  },
+                },
+              },
+              {
+                $addFields: {
+                  daySinceLastPurchase: {
+                    $divide: [
+                      {
+                        $subtract: [new Date(), "$lastPurchaseDate"],
+                      },
+                      1000 * 60 * 60 * 24,
+                    ],
+                  },
+                },
+              },
+            ])
+            .toArray(),
+        ]);
+
+        const totalOrders = totalRevenueData[0].totalOrders || 0;
+        const totalRevenue = totalRevenueData[0].totalRevenue || 0;
+
+        const analytics = {
+          activeUsers,
+          totalProducts,
+          totalOrders,
+          totalRevenue,
+          monthlySalesData,
+          inventoryMetrics: inventoryMetrics[0],
+          customerAnalytics: {
+            totalCustomers: customerAnalytics.length,
+            averageLifetimeValue:
+              customerAnalytics.reduce((acc, cur) => acc + cur.totalSpend, 0) /
+                customerAnalytics.length || 0,
+          },
+          kpis: {
+            averageOrderValue: totalOrders > 0 ? totalRevenue / totalOrders : 0,
+            conversionRate:
+              activeUsers > 0
+                ? ((totalOrders / activeUsers) * 100).toFixed(2)
+                : "0.00",
+            stockTurnOverRate:
+              inventoryMetrics[0]?.totalStock > 0
+                ? totalRevenue / inventoryMetrics[0].totalStock
+                : 0,
+          },
         };
 
         cache.set("dashboardAnalytics", analytics, 600);
